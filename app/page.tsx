@@ -1,68 +1,123 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState } from "react";
+import { Navbar } from "../components/Navbar";
+import { MaritimeMap } from "../components/MaritimeMap";
+import { DashboardModule } from "../components/DashboardModule";
+import { IncidentAnalysisDrawer } from "../components/IncidentAnalysisDrawer";
+import { SimulatorModule } from "../components/SimulatorModule";
+import { PatternsModule } from "../components/PatternsModule";
+import { MOCK_SLICK_INCIDENTS, SlickIncident } from "../data/mockMaritimeData";
 
 export default function Home() {
+  const [incidents, setIncidents] = useState<SlickIncident[]>(MOCK_SLICK_INCIDENTS);
+  const [selectedIncident, setSelectedIncident] = useState<SlickIncident>(MOCK_SLICK_INCIDENTS[0]);
+  const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
+  
+  // Active Navigation Module: 'map' | 'dashboard' | 'analysis' | 'simulator' | 'patterns'
+  const [activeModule, setActiveModule] = useState<"map" | "dashboard" | "analysis" | "simulator" | "patterns">("map");
+  const [isAnalysisDrawerOpen, setIsAnalysisDrawerOpen] = useState<boolean>(false);
+
+  const handleSelectIncident = (incident: SlickIncident) => {
+    setSelectedIncident(incident);
+    setSelectedVesselId(incident.candidates[0]?.id || null);
+    setIsAnalysisDrawerOpen(true);
+  };
+
+  const handleSelectVessel = (vesselId: string) => {
+    setSelectedVesselId(vesselId);
+    setIsAnalysisDrawerOpen(true);
+  };
+
+  const handleSimulationComplete = (incident: SlickIncident) => {
+    setSelectedIncident(incident);
+    setSelectedVesselId(incident.candidates[0]?.id || null);
+    setActiveModule("map");
+    setIsAnalysisDrawerOpen(true);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="w-screen h-screen flex flex-col overflow-hidden bg-[#f7f8fa] text-[#4a5568] selection:bg-amber-100 selection:text-amber-900">
+      {/* 1. Global Navigation Top Bar */}
+      <Navbar
+        activeModule={activeModule}
+        setActiveModule={setActiveModule}
+        selectedIncidentId={selectedIncident.id}
+      />
+
+      {/* 2. Main Viewport Workspace (Map-First Architecture) */}
+      <main className="flex-1 relative w-full h-full overflow-hidden flex">
+        {/* Primary GIS Map Anchor (Always mounted in background or focused) */}
+        <div className={`relative h-full transition-all duration-300 ${
+          activeModule === "map"
+            ? isAnalysisDrawerOpen ? "w-full lg:w-3/5 xl:w-2/3" : "w-full"
+            : activeModule === "analysis"
+            ? "w-1/3 hidden lg:block"
+            : "hidden"
+        }`}>
+          <MaritimeMap
+            incidents={incidents}
+            selectedIncident={selectedIncident}
+            selectedVesselId={selectedVesselId}
+            onSelectIncident={handleSelectIncident}
+            onSelectVessel={handleSelectVessel}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        {/* Sliding Incident Analysis Drawer (When active module is 'map' & drawer is open) */}
+        {activeModule === "map" && isAnalysisDrawerOpen && (
+          <div className="w-full lg:w-2/5 xl:w-1/3 h-full z-30 animate-in slide-in-from-right duration-300 shadow-2xl">
+            <IncidentAnalysisDrawer
+              incident={selectedIncident}
+              onClose={() => setIsAnalysisDrawerOpen(false)}
+              selectedVesselId={selectedVesselId}
+              onSelectVessel={handleSelectVessel}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          </div>
+        )}
+
+        {/* Standalone Incident Analysis View (When module switcher 'analysis' is clicked) */}
+        {activeModule === "analysis" && (
+          <div className="flex-1 h-full z-30">
+            <IncidentAnalysisDrawer
+              incident={selectedIncident}
+              onClose={() => setActiveModule("map")}
+              selectedVesselId={selectedVesselId}
+              onSelectVessel={handleSelectVessel}
+            />
+          </div>
+        )}
+
+        {/* Dashboard Module View */}
+        {activeModule === "dashboard" && (
+          <div className="w-full h-full z-30">
+            <DashboardModule
+              incidents={incidents}
+              onSelectIncident={handleSelectIncident}
+              onOpenAnalysis={(incident) => {
+                setSelectedIncident(incident);
+                setActiveModule("analysis");
+              }}
+              onNavigateToTab={(tab) => setActiveModule(tab)}
+            />
+          </div>
+        )}
+
+        {/* Live Simulator & Report Analyzer Centerpiece View */}
+        {activeModule === "simulator" && (
+          <div className="w-full h-full z-30">
+            <SimulatorModule
+              onSimulationComplete={handleSimulationComplete}
+            />
+          </div>
+        )}
+
+        {/* Patterns & Corridor Trends Module View */}
+        {activeModule === "patterns" && (
+          <div className="w-full h-full z-30">
+            <PatternsModule />
+          </div>
+        )}
       </main>
     </div>
   );
